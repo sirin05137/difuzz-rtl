@@ -41,7 +41,7 @@ port_names
   auto_tl_master_xing_out_e_ready
   auto_tl_master_xing_out_e_valid
   auto_tl_master_xing_out_e_bits_sink
-  auto_reset_vector_in
+  constants_reset_vector
   auto_int_in_xing_in_2_sync_0
   auto_int_in_xing_in_1_sync_0
   auto_int_in_xing_in_0_sync_0
