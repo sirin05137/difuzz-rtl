@@ -11,6 +11,8 @@
 
 package coverage
 
+import java.io.{FileWriter, PrintWriter, BufferedWriter}
+
 import firrtl._
 import firrtl.ir._
 import firrtl.PrimOps._
@@ -21,6 +23,8 @@ import scala.util.Random
 
 class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val maxStateSize: Int = 20, val covSumSize: Int=30) {
   private val mName = mod.name
+
+  private val regs = mInfo.regs
 
   private val ctrlSrcs = mInfo.ctrlSrcs
   private val muxSrcs = mInfo.muxSrcs
@@ -38,10 +42,39 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
   private val regStateName = mName + "_state"
   private val covMapName = mName + "_cov"
   private val covSumName = mName + "_covSum"
+  
+  val bw = new BufferedWriter(new FileWriter("example.txt", true))
+  bw.write(mod.name)
+  bw.write(" : ")
+  bw.newLine()
+  for(totreg <- regs){
+    bw.write("  ")
+    bw.write(totreg.name)
+    bw.newLine()
+  }
+  bw.close()
+  /*val pw = new PrintWriter(new FileWriter("/home/host/ctrl-reg.txt", true))
+  pw.println("Appending this text using PrintWriter.")
+  pw.print(mod.name)
+  pw.println(" : ")
+*/
+  /*private val test_Set = ctrlSrcs("DefRegister").map(
+    _.node.asInstanceOf[DefRegister])
+  for(bwreg <- test_Set) {
+    bw.write("  ")
+    bw.write(bwreg.name)
+    bw.newLine()
+  }
+  bw.close()*/
+  /*val hasCustom = testSet.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
+  val hasCustomSize = hasCustom.size*/
 
   private val ctrlRegs = ctrlSrcs("DefRegister").map(
     _.node.asInstanceOf[DefRegister]).filter(
     !dirInRegs.contains(_))
+  //val hasCustom = ctrlRegs.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
+  //val hasCustomSize = hasCustom.size
+  
   private val largeRegs = ctrlRegs.filter(regWidth(_) >= maxStateSize)
   private val smallRegs = ctrlRegs.filter(regWidth(_) < maxStateSize)
   private val scalaRegs = smallRegs.filter(x => !vecRegNames.contains(x.name))
@@ -60,18 +93,30 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
   }
 
   private var optRegs = Seq[DefRegister]()
+  private var customRegs = Seq[DefRegister]()
   for (reg <- scalaRegs) {
     val width = regWidth(reg).toInt
     var sinkMuxes = muxSrcs.filter(tuple => tuple._2.contains(reg.name)).map(tuple => tuple._1.cond).toSet
 
     if (sinkMuxes.size.toInt >= width) {
       optRegs = optRegs :+ reg
+      if (reg.name.contains("pcode_")||reg.name.contains("vpoffset_")){
+        customRegs = customRegs :+ reg
+      }
     } else {
       ctrlSigs = ctrlSigs ++ sinkMuxes.toSeq
     }
   }
   ctrlSigs = ctrlSigs.toSet.toSeq
   coveredMuxSrcs = coveredMuxSrcs.toSet.toSeq
+  
+  if(mod.name == "PTW"){
+    for(reg <- regs){
+      if(reg.name.contains("pcode_cfg_0")){
+        optRegs = optRegs :+ reg
+      }
+    }
+  }
 
   private val unCoveredCtrlSigs = ctrlSigs.filter(m => !coveredMuxSrcs.contains(m))
 
@@ -82,7 +127,27 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
     })
     ((tuple._2, tuple._1), firstRegs)
   }).toMap
-  val numOptRegs = (optRegs ++ firstVecRegs.values.toSet.flatten).size
+  private val testSet = optRegs ++ firstVecRegs.values.toSet.flatten
+  val numOptRegs = testSet.size
+  val hasCustom = testSet.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
+  val hasCustomSize = hasCustom.size
+  if (hasCustomSize != 0){
+    print("\n")
+    for (reg <- hasCustom){
+      print("Custom control register : ")
+      print(reg.name)
+      print("\n")
+    }
+  }
+  /*for (reg <- testSet){
+    bw.write("  ")
+    bw.write(reg.name)
+    bw.newLine()
+  }
+  bw.close()
+  */
+  //val numOptRegs = (optRegs ++ firstVecRegs.values.toSet.flatten).size
+  val numCustomOptReg = customRegs.size
 
   // Want to set same field in all the vector elements to the same location
   val (totBitWidth, regStateSize, ctrlOffsets) =
@@ -479,6 +544,7 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
     (clockName, resetName, hasClockAndReset)
   }
 }
+
 
 
 
