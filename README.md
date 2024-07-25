@@ -40,6 +40,10 @@ git clone https://github.com/compsec-snu/difuzz-rtl
 cd DifuzzRTL
 git checkout sim
 
+./prerequisite.sh
+export PATH=/opt/riscv/bin:$PATH
+export RISCV=/opt/riscv
+
 . ./setup.sh
 ```
 
