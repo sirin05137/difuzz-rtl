@@ -36,9 +36,9 @@ Please install the correct versions!
 - For RTL simulation using verilator
 
 ```
-git clone https://github.com/compsec-snu/difuzz-rtl
-cd DifuzzRTL
-git checkout sim
+git clone https://github.com/sirin05137/difuzz-rtl.git
+cd difuzz-rtl
+git checkout aflgo
 
 ./prerequisite.sh
 export PATH=/opt/riscv/bin:$PATH
@@ -61,6 +61,7 @@ sbt compile; sbt assembly
 ## Run
 
 ```
+. ./env.sh
 cd Fuzzer
 make SIM_BUILD=<build_dir> VFILE=<target> TOPLEVEL=<topmodule> NUM_ITER=<num_iter> OUT=<outdir>
 ```

@@ -70353,7 +70353,7 @@ module RoundAnyRawFNToRecFN_3(
   assign _T_11 = roundingMode_min & io_in_sign; // @[RoundAnyRawFNToRecFN.scala 96:27]
   assign _T_13 = roundingMode_max & ~io_in_sign; // @[RoundAnyRawFNToRecFN.scala 96:63]
   assign roundMagUp = _T_11 | _T_13; // @[RoundAnyRawFNToRecFN.scala 96:42]
-  assign sAdjustedExp = $signed(io_in_sExp) + -13'sh700; // @[RoundAnyRawFNToRecFN.scala 108:24]
+  assign sAdjustedExp = $signed(io_in_sExp) + $signed(-13'sh700); // @[RoundAnyRawFNToRecFN.scala 108:24]
   assign _T_16 = io_in_sig[27:0] != 28'h0; // @[RoundAnyRawFNToRecFN.scala 115:60]
   assign adjustedSig = {io_in_sig[53:28],_T_16}; // @[Cat.scala 30:58]
   assign _T_25 = ~sAdjustedExp[8]; // @[primitives.scala 57:25]
