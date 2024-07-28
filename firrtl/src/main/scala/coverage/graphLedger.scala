@@ -273,13 +273,29 @@ class graphLedger(val module: DefModule) {
     ).map(_._1)
   }
 
+  def findRegsNode : Seq[Node] = {
+    graphMap.filter(tuple => {
+      tuple._2._1.node.getClass.getSimpleName == "DefRegister"
+    }).map(tuple => tuple._2._1).toSeq
+  }
+
   // Find vector registers using the feature of Chisel.
   // Vertor registers in Chisel leave Source information
   def findVecRegs: Set[Tuple3[Int, String, Set[String]]] = {
     if (reverseMap.size == 0)
       return Set[Tuple3[Int, String, Set[String]]]()
 
-    val ctrlRegs = ctrlSrcs("DefRegister").map(_.node).toSet
+    var customRegs = Seq[Node]()
+    
+    if (mName == "PTW"){
+      for(reg <- findRegsNode){
+        if(reg.node.asInstanceOf[DefRegister].name.contains("pcode_cfg")){
+          customRegs = customRegs :+ reg
+        }
+      }
+    }
+
+    val ctrlRegs = ctrlSrcs("DefRegister").map(_.node).toSet ++ customRegs.map(_.node).toSet
 
     val infoRegMap: Map[Info, ListBuffer[String]] = {
       ctrlRegs.foldLeft(ListBuffer[Info]())((list, reg) => {

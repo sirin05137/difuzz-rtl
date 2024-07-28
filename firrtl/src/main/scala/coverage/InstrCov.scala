@@ -79,9 +79,17 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
   // Comment end
   */
 
-  private val ctrlRegs = ctrlSrcs("DefRegister").map(
+  private var ctrlRegs = ctrlSrcs("DefRegister").map(
     _.node.asInstanceOf[DefRegister]).filter(
     !dirInRegs.contains(_))
+  
+  if(mod.name == "PTW"){
+    for(reg <- regs){
+      if(reg.name.contains("pcode_cfg")){
+        ctrlRegs = ctrlRegs + reg
+      }
+    }
+  }
   
   private val largeRegs = ctrlRegs.filter(regWidth(_) >= maxStateSize)
   private val smallRegs = ctrlRegs.filter(regWidth(_) < maxStateSize)
@@ -118,13 +126,13 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
   // because this pass is applied to only intra-procedually. To catch the custom contorl
   // registers in PTW, I made it add the opt control register agressively 
   // TODO : modify it more clearly
-  if(mod.name == "PTW"){
+  /*if(mod.name == "PTW"){
     for(reg <- regs){
       if(reg.name.contains("pcode_cfg_0")){
         optRegs = optRegs :+ reg
       }
     }
-  }
+  }*/
   //
 
   private val unCoveredCtrlSigs = ctrlSigs.filter(m => !coveredMuxSrcs.contains(m))
