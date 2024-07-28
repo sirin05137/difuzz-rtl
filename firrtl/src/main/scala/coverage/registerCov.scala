@@ -79,7 +79,6 @@ class regCoverage extends Transform {
   val moduleInfos = mutable.Map[String, moduleInfo]()
   var totNumOptRegs = 0
   var totNumCustomOptRegs = 0
-  var totNumHasCustomSize = 0
 
   def execute(state: CircuitState): CircuitState = {
     val circuit = state.circuit
@@ -102,8 +101,7 @@ class regCoverage extends Transform {
       val instrCov = new InstrCov(m, moduleInfos(m.name), extModules)
       val mod = instrCov.instrument()
       totNumOptRegs = totNumOptRegs + instrCov.numOptRegs
-      totNumCustomOptRegs = totNumCustomOptRegs + instrCov.numCustomOptReg
-      totNumHasCustomSize = totNumHasCustomSize + instrCov.hasCustomSize
+      totNumCustomOptRegs = totNumCustomOptRegs + instrCov.customOptRegsSize
       instrCov.printLog()
 
       moduleInfos(m.name).saveCovResult(instrCov)
@@ -192,7 +190,6 @@ class regCoverage extends Transform {
       s"Total number of muxes: ${totMuxNum}\n" +
       s"Total number of optimized registers: ${totNumOptRegs}\n" +
       s"Total number of custom optimized registers: ${totNumCustomOptRegs}\n" +
-      s"Total number of has custom size registers: ${totNumHasCustomSize}\n" +
       s"Total bit width of registers: ${totRegBitWidth}\n" +
       s"Total bit width of control registers: ${totCtrlRegBitWidth}\n" +
       s"Optimized total bit width of control registers: ${totCtrlBitWidth_optimized}\n" +

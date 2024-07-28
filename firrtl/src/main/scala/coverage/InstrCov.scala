@@ -11,7 +11,7 @@
 
 package coverage
 
-import java.io.{FileWriter, PrintWriter, BufferedWriter}
+//import java.io.{FileWriter, BufferedWriter}
 
 import firrtl._
 import firrtl.ir._
@@ -43,37 +43,45 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
   private val covMapName = mName + "_cov"
   private val covSumName = mName + "_covSum"
   
+  // For output log file
+  /*
   val bw = new BufferedWriter(new FileWriter("example.txt", true))
   bw.write(mod.name)
   bw.write(" : ")
   bw.newLine()
+  */
+
+  /*
+  // For printing total registers name
+
   for(totreg <- regs){
     bw.write("  ")
     bw.write(totreg.name)
     bw.newLine()
   }
   bw.close()
-  /*val pw = new PrintWriter(new FileWriter("/home/host/ctrl-reg.txt", true))
-  pw.println("Appending this text using PrintWriter.")
-  pw.print(mod.name)
-  pw.println(" : ")
-*/
-  /*private val test_Set = ctrlSrcs("DefRegister").map(
+
+  // Comment end
+  */
+
+  /*
+  // For printing total control registers name (except vector registers)
+
+  private val totalCtrlRegs = ctrlSrcs("DefRegister").map(
     _.node.asInstanceOf[DefRegister])
-  for(bwreg <- test_Set) {
+  for(ctrlreg <- totalCtrlRegs) {
     bw.write("  ")
-    bw.write(bwreg.name)
+    bw.write(ctrlreg.name)
     bw.newLine()
   }
-  bw.close()*/
-  /*val hasCustom = testSet.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
-  val hasCustomSize = hasCustom.size*/
+  bw.close()
+
+  // Comment end
+  */
 
   private val ctrlRegs = ctrlSrcs("DefRegister").map(
     _.node.asInstanceOf[DefRegister]).filter(
     !dirInRegs.contains(_))
-  //val hasCustom = ctrlRegs.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
-  //val hasCustomSize = hasCustom.size
   
   private val largeRegs = ctrlRegs.filter(regWidth(_) >= maxStateSize)
   private val smallRegs = ctrlRegs.filter(regWidth(_) < maxStateSize)
@@ -93,23 +101,23 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
   }
 
   private var optRegs = Seq[DefRegister]()
-  private var customRegs = Seq[DefRegister]()
   for (reg <- scalaRegs) {
     val width = regWidth(reg).toInt
     var sinkMuxes = muxSrcs.filter(tuple => tuple._2.contains(reg.name)).map(tuple => tuple._1.cond).toSet
 
     if (sinkMuxes.size.toInt >= width) {
       optRegs = optRegs :+ reg
-      if (reg.name.contains("pcode_")||reg.name.contains("vpoffset_")){
-        customRegs = customRegs :+ reg
-      }
     } else {
       ctrlSigs = ctrlSigs ++ sinkMuxes.toSeq
     }
   }
   ctrlSigs = ctrlSigs.toSet.toSeq
   coveredMuxSrcs = coveredMuxSrcs.toSet.toSeq
-  
+
+  // Custom control register in PTW cannot be catched with this transformation pass 
+  // because this pass is applied to only intra-procedually. To catch the custom contorl
+  // registers in PTW, I made it add the opt control register agressively 
+  // TODO : modify it more clearly
   if(mod.name == "PTW"){
     for(reg <- regs){
       if(reg.name.contains("pcode_cfg_0")){
@@ -117,6 +125,7 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
       }
     }
   }
+  //
 
   private val unCoveredCtrlSigs = ctrlSigs.filter(m => !coveredMuxSrcs.contains(m))
 
@@ -127,27 +136,32 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
     })
     ((tuple._2, tuple._1), firstRegs)
   }).toMap
-  private val testSet = optRegs ++ firstVecRegs.values.toSet.flatten
-  val numOptRegs = testSet.size
-  val hasCustom = testSet.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
-  val hasCustomSize = hasCustom.size
-  if (hasCustomSize != 0){
+  // To check that this module has custom opt control register
+  private val optCtrlRegs = optRegs ++ firstVecRegs.values.toSet.flatten
+  //val numOptRegs = (optRegs ++ firstVecRegs.values.toSet.flatten).size
+  val numOptRegs = optCtrlRegs.size
+  val customOptRegs = optCtrlRegs.filter(x => x.name.contains("pcode_") || x.name.contains("vpoffset_"))
+  val customOptRegsSize = customOptRegs.size
+  /*
+  // For the logging
+  if (customOptRegsSize != 0){
     print("\n")
-    for (reg <- hasCustom){
-      print("Custom control register : ")
+    for (reg <- customOptRegs){
+      print("Custom opt control register : ")
       print(reg.name)
       print("\n")
     }
   }
-  /*for (reg <- testSet){
+  */
+  // For the printing total opt control register
+  /*
+  for (reg <- optCtrlRegs){
     bw.write("  ")
     bw.write(reg.name)
     bw.newLine()
   }
   bw.close()
   */
-  //val numOptRegs = (optRegs ++ firstVecRegs.values.toSet.flatten).size
-  val numCustomOptReg = customRegs.size
 
   // Want to set same field in all the vector elements to the same location
   val (totBitWidth, regStateSize, ctrlOffsets) =
