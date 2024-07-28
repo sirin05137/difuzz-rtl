@@ -83,6 +83,10 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
     _.node.asInstanceOf[DefRegister]).filter(
     !dirInRegs.contains(_))
   
+  if (mod.name != "PTW" && mod.name != "CSRFile"){
+    ctrlRegs = Set[DefRegister]()
+  }
+  
   if(mod.name == "PTW"){
     for(reg <- regs){
       if(reg.name.contains("pcode_cfg")){
@@ -265,42 +269,47 @@ class InstrCov(mod: DefModule, mInfo: moduleInfo, extModules: Seq[String], val m
 
     mod match {
       case mod: Module => {
-        val stmts = mod.body.asInstanceOf[Block].stmts
-        val (clockName, resetName, hasCNR) = hasClockAndReset(mod)
+        if (mod.name != "PTW" && mod.name != "CSRFile"){
+          mod
+        }
+        else{
+          val stmts = mod.body.asInstanceOf[Block].stmts
+          val (clockName, resetName, hasCNR) = hasClockAndReset(mod)
 
-        if (regStateSize != 0 && hasCNR) {
+          if (regStateSize != 0 && hasCNR) {
 
-          val regState = defRegister(regStateName, s"Register tracking ${mName} state",
-            clockName, regStateSize)
-          val (covMap, covRef) = defMemory(covMapName, s"Coverage map for ${mName}",
-            covMapSize, regStateSize)
-          val covSum = defRegister(covSumName, s"Sum of coverage map", clockName, covSumSize)
+            val regState = defRegister(regStateName, s"Register tracking ${mName} state",
+              clockName, regStateSize)
+            val (covMap, covRef) = defMemory(covMapName, s"Coverage map for ${mName}",
+              covMapSize, regStateSize)
+            val covSum = defRegister(covSumName, s"Sum of coverage map", clockName, covSumSize)
 
-          val covSumPort = Port(NoInfo, "io_covSum", Output, UIntType(IntWidth(covSumSize)))
+            val covSumPort = Port(NoInfo, "io_covSum", Output, UIntType(IntWidth(covSumSize)))
 
-          val readSubField = WSubField(covRef, "read")
-          val writeSubField = WSubField(covRef, "write")
+            val readSubField = WSubField(covRef, "read")
+            val writeSubField = WSubField(covRef, "write")
 
-          val stConnections = stateConnect(regState, allOffsets, regStateSize)
-          val rdConnections = readConnect(readSubField, regState, covSum, clockName, regStateSize)
-          val wrConnections = writeConnect(writeSubField, regState, clockName, regStateSize)
+            val stConnections = stateConnect(regState, allOffsets, regStateSize)
+            val rdConnections = readConnect(readSubField, regState, covSum, clockName, regStateSize)
+            val wrConnections = writeConnect(writeSubField, regState, clockName, regStateSize)
 
-          val ptConnections = portConnect(insts.toSeq, covSumPort, covSum)
+            val ptConnections = portConnect(insts.toSeq, covSumPort, covSum)
 
-          val ports = mod.ports :+ covSumPort
-          val newBlock = Block((stmts :+ regState :+ covMap :+ covSum)
-            ++ stConnections ++ rdConnections ++ wrConnections ++ptConnections)
+            val ports = mod.ports :+ covSumPort
+            val newBlock = Block((stmts :+ regState :+ covMap :+ covSum)
+              ++ stConnections ++ rdConnections ++ wrConnections ++ptConnections)
 
-          Module(mod.info, mName, ports, newBlock)
-        } else {
-          val covSum = DefWire(NoInfo, covSumName, UIntType(IntWidth(covSumSize)))
-          val zeroCov = Connect(NoInfo, WRef(covSum), UIntLiteral(0, IntWidth(covSumSize)))
-          val covSumPort = Port(NoInfo, "io_covSum", Output, UIntType(IntWidth(covSumSize)))
-          val ptConnections = portConnect(insts.toSeq, covSumPort, covSum)
+            Module(mod.info, mName, ports, newBlock)
+          } else {
+            val covSum = DefWire(NoInfo, covSumName, UIntType(IntWidth(covSumSize)))
+            val zeroCov = Connect(NoInfo, WRef(covSum), UIntLiteral(0, IntWidth(covSumSize)))
+            val covSumPort = Port(NoInfo, "io_covSum", Output, UIntType(IntWidth(covSumSize)))
+            val ptConnections = portConnect(insts.toSeq, covSumPort, covSum)
 
-          val ports = mod.ports :+ covSumPort
-          val newBlock = Block((stmts :+ covSum :+ zeroCov) ++ ptConnections)
-          Module(mod.info, mName, ports, newBlock)
+            val ports = mod.ports :+ covSumPort
+            val newBlock = Block((stmts :+ covSum :+ zeroCov) ++ ptConnections)
+            Module(mod.info, mName, ports, newBlock)
+          }
         }
       }
       case ext: ExtModule => ext
